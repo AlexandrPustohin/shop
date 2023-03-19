@@ -6,7 +6,9 @@ import com.example.shop.model.Role;
 import com.example.shop.model.ShopUser;
 import com.example.shop.repository.RoleRepository;
 import com.example.shop.repository.ShopUserRepository;
+import com.example.shop.services.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +27,9 @@ import java.util.Collections;
 @RequestMapping("/api/auth")
 public class AuthController {
     @Autowired
+    private JwtService jwtService;
+
+    @Autowired
     private AuthenticationManager authenticationManager;
 
     @Autowired
@@ -37,17 +42,25 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/signin")
-    public ResponseEntity<String> authenticateUser(@RequestBody LoginDto loginDto){
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginDto loginDto){
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 loginDto.getUsernameOrEmail(), loginDto.getPassword()));
+        // генерируем токен
+        String jwts = jwtService.getToken(authentication.getName());
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return new ResponseEntity<>("User signed-in successfully!.", HttpStatus.OK);
+
+        //Создаем ответ с токеном
+        return ResponseEntity.ok()
+                .header(HttpHeaders.AUTHORIZATION, "Shop " + jwts)
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        "Authorization")
+                .build();
     }
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@RequestBody SignUpDto signUpDto){
-
+        System.out.println("@PostMapping(/signup) ");
         // add check for username exists in a DB
         if(userRepository.existsByUserName(signUpDto.getUsername())){
             return new ResponseEntity<>("Username is already taken!", HttpStatus.BAD_REQUEST);
